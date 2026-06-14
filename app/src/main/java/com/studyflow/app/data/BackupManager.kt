@@ -126,8 +126,7 @@ class BackupManager(private val context: Context) {
     }
 
     // ── Write to Downloads ────────────────────────────────────────────────────
-
-    private fun writeToDownloads(content: String) {
+private fun writeToDownloads(content: String) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         val resolver = context.contentResolver
 
@@ -171,8 +170,8 @@ class BackupManager(private val context: Context) {
                 Environment.DIRECTORY_DOWNLOADS), FOLDER)
         dir.mkdirs()
         File(dir, FILE_NAME).writeText(content)
-        }
     }
+}
             // Android 9 and below — write directly (WRITE_EXTERNAL_STORAGE required)
             val dir  = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), FOLDER)
             dir.mkdirs()
