@@ -128,35 +128,51 @@ class BackupManager(private val context: Context) {
     // ── Write to Downloads ────────────────────────────────────────────────────
 
     private fun writeToDownloads(content: String) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Android 10+ — use MediaStore (no permission needed for Downloads)
-            val resolver = context.contentResolver
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val resolver = context.contentResolver
 
-            // Delete existing file first (update it)
-            val existing = resolver.query(
-                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Downloads._ID),
-                "${MediaStore.Downloads.DISPLAY_NAME}=? AND ${MediaStore.Downloads.RELATIVE_PATH}=?",
-                arrayOf(FILE_NAME, "Download/$FOLDER/"),
-                null,
-            )
-            existing?.use { c ->
-                if (c.moveToFirst()) {
-                    val idCol = c.getColumnIndexOrThrow(MediaStore.Downloads._ID)
-                    val uri   = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-                        .buildUpon().appendPath(c.getLong(idCol).toString()).build()
-                    resolver.delete(uri, null, null)
-                }
-            }
+        // Find existing file URI
+        val existing = resolver.query(
+            MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+            arrayOf(MediaStore.Downloads._ID),
+            "${MediaStore.Downloads.DISPLAY_NAME}=? AND ${MediaStore.Downloads.RELATIVE_PATH}=?",
+            arrayOf(FILE_NAME, "Download/$FOLDER/"),
+            null,
+        )
 
+        val existingUri = existing?.use { c ->
+            if (c.moveToFirst()) {
+                val id = c.getLong(c.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI.buildUpon()
+                    .appendPath(id.toString()).build()
+            } else null
+        }
+
+        if (existingUri != null) {
+            // ← overwrite in-place, no new file created
+            resolver.openOutputStream(existingUri, "wt")
+                ?.use { it.write(content.toByteArray()) }
+        } else {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, FILE_NAME)
                 put(MediaStore.Downloads.MIME_TYPE, "application/json")
                 put(MediaStore.Downloads.RELATIVE_PATH, "Download/$FOLDER/")
             }
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            uri?.let { resolver.openOutputStream(it)?.use { os -> os.write(content.toByteArray()) } }
-        } else {
+            val newUri = resolver.insert(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            newUri?.let {
+                resolver.openOutputStream(it)
+                    ?.use { os -> os.write(content.toByteArray()) }
+            }
+        }
+    } else {
+        val dir = File(
+            Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS), FOLDER)
+        dir.mkdirs()
+        File(dir, FILE_NAME).writeText(content)
+    }
+    }
             // Android 9 and below — write directly (WRITE_EXTERNAL_STORAGE required)
             val dir  = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), FOLDER)
             dir.mkdirs()
