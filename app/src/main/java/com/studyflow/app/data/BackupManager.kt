@@ -172,13 +172,6 @@ private fun writeToDownloads(content: String) {
         File(dir, FILE_NAME).writeText(content)
     }
 }
-            // Android 9 and below — write directly (WRITE_EXTERNAL_STORAGE required)
-            val dir  = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), FOLDER)
-            dir.mkdirs()
-            File(dir, FILE_NAME).writeText(content)
-        }
-    }
-
     // ── Read from Downloads ───────────────────────────────────────────────────
 
     private fun readFromDownloads(): String? {
